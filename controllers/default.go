@@ -11,7 +11,6 @@ type MainController struct {
 }
 
 func (this *MainController) Get() {
-	this.Layout = "layout.tpl"
 
 	models.MgoTest()
 

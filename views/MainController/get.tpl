@@ -1,3 +1,5 @@
+{{template "header.tpl"}}
+
 <div class="row-fluid">
 	<div class="span12">
 		<h1 class="text-center">
@@ -19,3 +21,5 @@
 		</div>
 	</div>
 </div>
+
+{{template "footer.tpl"}}
