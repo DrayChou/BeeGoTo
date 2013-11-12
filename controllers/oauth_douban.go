@@ -7,6 +7,7 @@
 package controllers
 
 import (
+	"BeeGoTo/models/douban"
 	"code.google.com/p/goauth2/oauth"
 	"encoding/json"
 	"fmt"
@@ -14,34 +15,6 @@ import (
 	"github.com/astaxie/beego/config"
 	"io/ioutil"
 )
-
-type DoubanUser struct {
-	Id           int
-	Uid          string
-	Screen_name  string
-	Type         string
-	Description  string
-	Small_avatar string
-	Large_avatar string
-}
-
-type DoubanAttachments struct {
-	Type         string
-	Title        string
-	Description  string
-	Href         string
-	Original_src string
-}
-
-type DoubanUserTime struct {
-	Layout      int
-	Title       string
-	Text        string
-	Created_at  string
-	Id          int
-	User        DoubanUser
-	Attachments DoubanAttachments
-}
 
 type OauthDoubanController struct {
 	beego.Controller
@@ -57,7 +30,6 @@ func (this *OauthDoubanController) Get() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(dbconf)
 
 	DBConfig := &oauth.Config{
 		ClientId:     dbconf.String("douban_clientId"),
@@ -117,7 +89,7 @@ func (this *OauthDoubanController) Get() {
 	this.Data["JsonStr"] = string(body)
 	fmt.Println("Request Error:", string(body))
 
-	var line []DoubanUserTime
+	var line douban.User
 	err = json.Unmarshal(body, &line)
 	if err != nil {
 		fmt.Println("error:", err)
