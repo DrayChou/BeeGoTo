@@ -32,13 +32,13 @@ func (this *OauthDoubanController) Get() {
 	}
 
 	DBConfig := &oauth.Config{
-		ClientId:     dbconf.String("douban_clientId"),
-		ClientSecret: dbconf.String("douban_clientSecret"),
-		RedirectURL:  dbconf.String("douban_redirectURL"),
-		Scope:        dbconf.String("douban_scope"),
-		AuthURL:      dbconf.String("douban_authURL"),
-		TokenURL:     dbconf.String("douban_tokenURL"),
-		TokenCache:   oauth.CacheFile(dbconf.String("douban_cachefile") + "test001" + ".json"),
+		ClientId:     dbconf.String("clientId"),
+		ClientSecret: dbconf.String("clientSecret"),
+		RedirectURL:  dbconf.String("redirectURL"),
+		Scope:        dbconf.String("scope"),
+		AuthURL:      dbconf.String("authURL"),
+		TokenURL:     dbconf.String("tokenURL"),
+		TokenCache:   oauth.CacheFile(dbconf.String("cacheDir") + "test001" + ".json"),
 	}
 	DBtransport := &oauth.Transport{Config: DBConfig}
 
@@ -74,7 +74,7 @@ func (this *OauthDoubanController) Get() {
 	DBtransport.Token = token
 
 	// Make the request.
-	r, err := DBtransport.Client().Get(dbconf.String("douban_requestURL"))
+	r, err := DBtransport.Client().Get(dbconf.String("requestURL"))
 	if err != nil {
 		fmt.Println("GetErr:", err)
 	}
