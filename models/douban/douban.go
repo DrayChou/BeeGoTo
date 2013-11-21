@@ -57,14 +57,15 @@ type DoubanError struct {
 }
 
 func (oe DoubanError) Error() string {
-	fmt.Println("DoubanAPIError: " + oe.prefix + ": " + oe.msg)
-	beego.Error("DoubanAPIError: " + oe.prefix + ": " + oe.msg)
+	fmt.Println("DoubanAPI: " + oe.prefix + ": " + oe.msg)
+	beego.Error("DoubanAPI: " + oe.prefix + ": " + oe.msg)
 	return "DoubanError: " + oe.prefix + ": " + oe.msg
 }
 
 type Douban struct {
-	Conf      string
-	Transport *oauth.Transport
+	Conf         string
+	Conffiletype string
+	Transport    *oauth.Transport
 }
 
 func (this *Douban) AuthUrl() (error, string) {
@@ -81,10 +82,18 @@ func (this *Douban) Auth(uid string, code string) error {
 		return DoubanError{"Auth", "內網用戶ID不能爲空"}
 	}
 
-	beego.Debug("User_id:", uid)
-	beego.Debug("Code:", code)
+	beego.Debug("DoubanAPI:Auth:User_id:", uid)
+	beego.Debug("DoubanAPI:Auth:Code:", code)
 
-	dbconf, err := config.NewConfig("ini", this.Conf)
+	if this.Conf == "" {
+		return DoubanError{"Auth", "配置文件参数错误"}
+	}
+
+	if this.Conffiletype == "" {
+		this.Conffiletype = "ini"
+	}
+
+	dbconf, err := config.NewConfig(this.Conffiletype, this.Conf)
 	if err != nil {
 		return DoubanError{"Auth", "配置文件加载失败"}
 	}
@@ -102,14 +111,14 @@ func (this *Douban) Auth(uid string, code string) error {
 		TokenURL:     dbconf.String("tokenURL"),
 		TokenCache:   oauth.CacheFile(dbconf.String("cacheDir") + uid + ".json"),
 	}
-	beego.Debug("Config:", Config)
+	beego.Debug("DoubanAPI:Auth:Config:", Config)
 
 	this.Transport = &oauth.Transport{Config: Config}
-	beego.Debug("this.Transport:", this.Transport.Config)
+	beego.Debug("DoubanAPI:Auth:this.Transport:", this.Transport.Config)
 
 	// Try to pull the token from the cache; if this fails, we need to get one.
 	token, err := Config.TokenCache.Token()
-	beego.Debug("token:", token)
+	beego.Debug("DoubanAPI:Auth:token:", token)
 
 	if err != nil {
 
@@ -117,7 +126,7 @@ func (this *Douban) Auth(uid string, code string) error {
 			if code != "" {
 
 				token, err = this.Transport.Exchange(code)
-				fmt.Println("token:", token)
+				beego.Debug("DoubanAPI:Auth:token:", token)
 
 				if err != nil {
 					return DoubanError{"Auth", "令牌換取失敗:," + err.Error()}
@@ -159,8 +168,8 @@ func (this *Douban) User(uid string) (error, User) {
 
 	body, _ := ioutil.ReadAll(r.Body)
 
-	beego.Debug("User:Request StatusCode:", r.StatusCode)
-	beego.Debug("User:Request Body:", string(body))
+	beego.Debug("DoubanAPI:User:Request StatusCode:", r.StatusCode)
+	beego.Debug("DoubanAPI:User:Request Body:", string(body))
 
 	err = json.Unmarshal(body, &u)
 	if err != nil {
@@ -194,8 +203,8 @@ func (this *Douban) UserTimeLine(uid string, count int64, since_id int64) (error
 
 	body, _ := ioutil.ReadAll(r.Body)
 
-	beego.Debug("UserTimeLine:Request StatusCode:", r.StatusCode)
-	beego.Debug("UserTimeLine:Request Body:", string(body))
+	beego.Debug("DoubanAPI:UserTimeLine:Request StatusCode:", r.StatusCode)
+	beego.Debug("DoubanAPI:UserTimeLine:Request Body:", string(body))
 
 	err = json.Unmarshal(body, &tl)
 	if err != nil {
@@ -229,8 +238,8 @@ func (this *Douban) Shuo(text string) (error, TimeLine) {
 
 	body, _ := ioutil.ReadAll(r.Body)
 
-	beego.Debug("Shuo:Request StatusCode:", r.StatusCode)
-	beego.Debug("Shuo:Request Body:", string(body))
+	beego.Debug("DoubanAPI:Shuo:Request StatusCode:", r.StatusCode)
+	beego.Debug("DoubanAPI:Shuo:Request Body:", string(body))
 
 	if err = json.Unmarshal(body, &tl); r.StatusCode != 200 || err != nil {
 		return DoubanError{"Shuo", "JSON解析失败:" + err.Error()}, tl
