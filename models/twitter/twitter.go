@@ -28,11 +28,10 @@ func (oe TwitterError) Error() string {
 type Twitter struct {
 	Conf         string
 	Conffiletype string
-	TempCred     *oauth.Credentials
 	OauthClient  *oauth.Client
 }
 
-func (this *Twitter) AuthUrl() (error, string) {
+func (this *Twitter) AuthUrl(uid string) (error, string) {
 	if this.OauthClient == nil {
 		return TwitterError{"AuthUrl", "推特配置异常"}, ""
 	}
@@ -41,9 +40,16 @@ func (this *Twitter) AuthUrl() (error, string) {
 	if err != nil {
 		return TwitterError{"AuthUrl", "RequestTemporaryCredentials:" + err.Error()}, ""
 	}
-
-	this.TempCred = tempCred
 	beego.Debug("TwitterAPI:AuthUrl:tempCred:", tempCred)
+
+	tconf, err := config.NewConfig(this.Conffiletype, this.Conf)
+	if err != nil {
+		return TwitterError{"Auth", "配置文件加载失败"}, ""
+	}
+	beego.Debug("TwitterAPI:User:tconf:", tconf)
+
+	b, _ := json.Marshal(tempCred)
+	ioutil.WriteFile(tconf.String("cacheDir")+uid+".tmp"+".json", b, 0644)
 
 	url := this.OauthClient.AuthorizationURL(tempCred, nil)
 	fmt.Println("url:", url)
@@ -99,12 +105,20 @@ func (this *Twitter) Auth(uid string, code string) error {
 			return TwitterError{"Auth", "code 为空，无法授权"}
 		}
 
-		if this.TempCred == nil {
+		tmpconf, err := config.NewConfig("json", tconf.String("cacheDir")+uid+".tmp"+".json")
+		beego.Debug("TwitterAPI:Auth:tmpconf:", tmpconf)
+
+		if err != nil {
 			return TwitterError{"Auth", "请先取得授权地址"}
 		}
-		beego.Debug("TwitterAPI:Auth:this.TempCred:", this.TempCred)
 
-		tokenCred, _, err := this.OauthClient.RequestToken(http.DefaultClient, this.TempCred, code)
+		tempCred := &oauth.Credentials{
+			Token:  tmpconf.String("Token"),
+			Secret: tmpconf.String("Secret"),
+		}
+		beego.Debug("TwitterAPI:Auth:this.TempCred:", tempCred)
+
+		tokenCred, _, err := this.OauthClient.RequestToken(http.DefaultClient, tempCred, code)
 		if err != nil {
 			log.Fatal(err)
 			return TwitterError{"Auth", "RequestTemporaryCredentials:" + err.Error()}
@@ -114,10 +128,8 @@ func (this *Twitter) Auth(uid string, code string) error {
 
 		b, _ := json.Marshal(tokenCred)
 		ioutil.WriteFile(tconf.String("cacheDir")+uid+".json", b, 0644)
-		this.OauthClient.Credentials = oauth.Credentials{
-			Token:  tokenCred.Token,
-			Secret: tokenCred.Secret,
-		}
+		this.OauthClient.Credentials.Secret = tokenCred.Secret
+		this.OauthClient.Credentials.Token = tokenCred.Token
 	}
 
 	return nil

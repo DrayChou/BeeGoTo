@@ -19,7 +19,7 @@ func (this *OauthTwitterController) Get() {
 	t_code := this.GetString("code")
 	db := &twitter.Twitter{Conf: "conf/twitter.conf"}
 	if ok := db.Auth("we_get", t_code); ok != nil {
-		if ok2, url := db.AuthUrl(); ok2 != nil {
+		if ok2, url := db.AuthUrl("we_get"); ok2 != nil {
 
 		} else {
 			this.Data["AuthCodeURL"] = url
