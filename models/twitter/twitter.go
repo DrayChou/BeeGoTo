@@ -28,6 +28,7 @@ func (oe TwitterError) Error() string {
 type Twitter struct {
 	Conf         string
 	Conffiletype string
+	TempCred     *oauth.Client
 	OauthClient  *oauth.Client
 }
 
@@ -41,6 +42,7 @@ func (this *Twitter) AuthUrl() (error, string) {
 		return TwitterError{"AuthUrl", "RequestTemporaryCredentials:" + err.Error()}, ""
 	}
 
+	this.TempCred = tempCred
 	beego.Debug("TwitterAPI:AuthUrl:tempCred:", tempCred)
 
 	url := this.OauthClient.AuthorizationURL(tempCred, nil)
@@ -54,7 +56,6 @@ func (this *Twitter) Auth(uid string, code string) error {
 	}
 
 	beego.Debug("TwitterAPI:Auth:User_id:", uid)
-	beego.Debug("TwitterAPI:Auth:Code:", code)
 
 	if this.Conf == "" {
 		return TwitterError{"Auth", "配置文件参数错误"}
@@ -70,10 +71,6 @@ func (this *Twitter) Auth(uid string, code string) error {
 	}
 
 	beego.Debug("TwitterAPI:User:tconf:", tconf)
-
-	if code == "" {
-		code = tconf.String("code")
-	}
 
 	this.OauthClient = &oauth.Client{
 		TemporaryCredentialRequestURI: tconf.String("redirectURL"),
@@ -97,15 +94,17 @@ func (this *Twitter) Auth(uid string, code string) error {
 			Secret: tokenconf.String("Secret"),
 		}
 	} else {
-		tempCred, err := this.OauthClient.RequestTemporaryCredentials(http.DefaultClient, "oob", nil)
-		if err != nil {
-			log.Fatal("RequestTemporaryCredentials:", err)
-			return TwitterError{"Auth", "RequestTemporaryCredentials:" + err.Error()}
+		beego.Debug("TwitterAPI:Auth:Code:", code)
+		if code == "" {
+			return TwitterError{"Auth", "code 为空，无法授权"}
 		}
 
-		beego.Debug("TwitterAPI:Auth:tempCred:", tempCred)
+		if this.TempCred == nil {
+			return TwitterError{"Auth", "请先取得授权地址"}
+		}
+		beego.Debug("TwitterAPI:Auth:this.TempCred:", this.TempCred)
 
-		tokenCred, _, err := this.OauthClient.RequestToken(http.DefaultClient, tempCred, code)
+		tokenCred, _, err := this.OauthClient.RequestToken(http.DefaultClient, this.TempCred, code)
 		if err != nil {
 			log.Fatal(err)
 			return TwitterError{"Auth", "RequestTemporaryCredentials:" + err.Error()}
