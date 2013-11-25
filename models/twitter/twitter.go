@@ -28,7 +28,7 @@ func (oe TwitterError) Error() string {
 type Twitter struct {
 	Conf         string
 	Conffiletype string
-	TempCred     *oauth.Client
+	TempCred     *oauth.Credentials
 	OauthClient  *oauth.Client
 }
 
