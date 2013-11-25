@@ -31,6 +31,45 @@ type Twitter struct {
 	OauthClient  *oauth.Client
 }
 
+func (this *Twitter) LoadToken(uid string) (err_r error, token oauth.Credentials) {
+
+	tconf, err := config.NewConfig(this.Conffiletype, this.Conf)
+	if err != nil {
+		return TwitterError{"Auth", "twitter 配置文件加载失败"}, token
+	}
+
+	tokenconf, err := config.NewConfig("json", tconf.String("cacheDir")+uid+".json")
+	if err != nil {
+		return TwitterError{"Auth", "user 配置文件加载失败"}, token
+	}
+
+	if tokenconf.String("Token") == "" || tokenconf.String("Secret") == "" {
+		return TwitterError{"Auth", "user 配置文件有误"}, token
+	}
+
+	token = oauth.Credentials{
+		Token:  tokenconf.String("Token"),
+		Secret: tokenconf.String("Secret"),
+	}
+
+	return nil, token
+}
+
+func (this *Twitter) SaveToken(uid string, token oauth.Credentials) (err_r error) {
+	tconf, err := config.NewConfig(this.Conffiletype, this.Conf)
+	if err != nil {
+		return TwitterError{"Auth", "twitter 配置文件加载失败"}
+	}
+
+	b, err := json.Marshal(token)
+	if err != nil {
+		return TwitterError{"Auth", "token 编码失败"}
+	}
+	ioutil.WriteFile(tconf.String("cacheDir")+uid+".json", b, 0644)
+
+	return nil
+}
+
 func (this *Twitter) AuthUrl(uid string) (error, string) {
 	if this.OauthClient == nil {
 		return TwitterError{"AuthUrl", "推特配置异常"}, ""
@@ -42,14 +81,7 @@ func (this *Twitter) AuthUrl(uid string) (error, string) {
 	}
 	beego.Debug("TwitterAPI:AuthUrl:tempCred:", tempCred)
 
-	tconf, err := config.NewConfig(this.Conffiletype, this.Conf)
-	if err != nil {
-		return TwitterError{"Auth", "配置文件加载失败"}, ""
-	}
-	beego.Debug("TwitterAPI:User:tconf:", tconf)
-
-	b, _ := json.Marshal(tempCred)
-	ioutil.WriteFile(tconf.String("cacheDir")+uid+".tmp"+".json", b, 0644)
+	this.SaveToken(uid+".tmp", *tempCred)
 
 	url := this.OauthClient.AuthorizationURL(tempCred, nil)
 	fmt.Println("url:", url)
@@ -90,14 +122,13 @@ func (this *Twitter) Auth(uid string, code string) error {
 
 	beego.Debug("TwitterAPI:Auth:this.OauthClient:", this.OauthClient)
 
-	tokenconf, err := config.NewConfig("json", tconf.String("cacheDir")+uid+".json")
+	err, token := this.LoadToken(uid)
+	beego.Debug("TwitterAPI:Auth:token:", token)
 
 	if err == nil {
-		beego.Debug("TwitterAPI:Auth:tokenconf:", tokenconf)
-
 		this.OauthClient.Credentials = oauth.Credentials{
-			Token:  tokenconf.String("Token"),
-			Secret: tokenconf.String("Secret"),
+			Token:  token.Token,
+			Secret: token.Secret,
 		}
 	} else {
 		beego.Debug("TwitterAPI:Auth:Code:", code)
@@ -105,20 +136,14 @@ func (this *Twitter) Auth(uid string, code string) error {
 			return TwitterError{"Auth", "code 为空，无法授权"}
 		}
 
-		tmpconf, err := config.NewConfig("json", tconf.String("cacheDir")+uid+".tmp"+".json")
-		beego.Debug("TwitterAPI:Auth:tmpconf:", tmpconf)
+		err, tempCred := this.LoadToken(uid + ".tmp")
+		beego.Debug("TwitterAPI:Auth:tempCred:", tempCred)
 
 		if err != nil {
 			return TwitterError{"Auth", "请先取得授权地址"}
 		}
 
-		tempCred := &oauth.Credentials{
-			Token:  tmpconf.String("Token"),
-			Secret: tmpconf.String("Secret"),
-		}
-		beego.Debug("TwitterAPI:Auth:this.TempCred:", tempCred)
-
-		tokenCred, _, err := this.OauthClient.RequestToken(http.DefaultClient, tempCred, code)
+		tokenCred, _, err := this.OauthClient.RequestToken(http.DefaultClient, &tempCred, code)
 		if err != nil {
 			log.Fatal(err)
 			return TwitterError{"Auth", "RequestTemporaryCredentials:" + err.Error()}
@@ -126,10 +151,11 @@ func (this *Twitter) Auth(uid string, code string) error {
 
 		beego.Debug("TwitterAPI:Auth:tokenCred:", tokenCred)
 
-		b, _ := json.Marshal(tokenCred)
-		ioutil.WriteFile(tconf.String("cacheDir")+uid+".json", b, 0644)
-		this.OauthClient.Credentials.Secret = tokenCred.Secret
-		this.OauthClient.Credentials.Token = tokenCred.Token
+		this.SaveToken(uid, *tokenCred)
+		this.OauthClient.Credentials = oauth.Credentials{
+			Token:  tokenCred.Token,
+			Secret: tokenCred.Secret,
+		}
 	}
 
 	return nil
@@ -170,7 +196,10 @@ func (this *Twitter) Auth(uid string, code string) error {
 //}
 
 func (this *Twitter) UserTimeLine(uid string, count int64, since_id int64) error {
-	r, err := this.OauthClient.Get(http.DefaultClient, &this.OauthClient.Credentials,
+	_, token := this.LoadToken(uid)
+	beego.Debug("TwitterAPI:UserTimeLine:token:", token)
+
+	r, err := this.OauthClient.Get(http.DefaultClient, &token,
 		"http://api.twitter.com/1.1/statuses/home_timeline.json", nil)
 	if err != nil {
 		log.Fatal(err)
