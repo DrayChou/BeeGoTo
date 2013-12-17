@@ -21,13 +21,13 @@ type OauthGoogleController struct {
 }
 
 var GOConfig = &oauth.Config{
-	ClientId:     beego.AppConfig.String("google_clientId"),
-	ClientSecret: beego.AppConfig.String("google_clientSecret"),
-	RedirectURL:  beego.AppConfig.String("google_redirectURL"),
-	Scope:        beego.AppConfig.String("google_scope"),
-	AuthURL:      beego.AppConfig.String("google_authURL"),
-	TokenURL:     beego.AppConfig.String("google_tokenURL"),
-	TokenCache:   oauth.CacheFile(beego.AppConfig.String("google_cachefile")),
+	ClientId:     beego.AppConfig.String("clientId"),
+	ClientSecret: beego.AppConfig.String("clientSecret"),
+	RedirectURL:  beego.AppConfig.String("redirectURL"),
+	Scope:        beego.AppConfig.String("scope"),
+	AuthURL:      beego.AppConfig.String("authURL"),
+	TokenURL:     beego.AppConfig.String("tokenURL"),
+	TokenCache:   oauth.CacheFile(beego.AppConfig.String("cachefile")),
 }
 
 var GOtransport = &oauth.Transport{Config: GOConfig}
@@ -37,6 +37,7 @@ func (this *OauthGoogleController) Prepare() {
 }
 
 func (this *OauthGoogleController) Get() {
+	this.TplNames = "oauth_google/get.tpl"
 
 	// Try to pull the token from the cache; if this fails, we need to get one.
 	_, err := GOConfig.TokenCache.Token()
@@ -53,6 +54,7 @@ func (this *OauthGoogleController) Get() {
 }
 
 func (this *OauthGoogleController) Post() {
+	this.TplNames = "oauth_google/post.tpl"
 
 	t_code := this.GetString("code")
 
