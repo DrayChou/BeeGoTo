@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/config"
 	"io/ioutil"
 )
@@ -53,21 +52,12 @@ type Return struct {
 }
 
 type Douban struct {
-	User     User
-	TimeLine []UserTime
-	Return   Return
+	User        User
+	TimeLine    []UserTime
+	Return      Return
+	DBConfig    *oauth.Config
+	DBtransport *oauth.Transport
 }
-
-var DBConfig = &oauth.Config{
-	ClientId:     dbconf.String("douban_clientId"),
-	ClientSecret: dbconf.String("douban_clientSecret"),
-	RedirectURL:  dbconf.String("douban_redirectURL"),
-	Scope:        dbconf.String("douban_scope"),
-	AuthURL:      dbconf.String("douban_authURL"),
-	TokenURL:     dbconf.String("douban_tokenURL"),
-	TokenCache:   oauth.CacheFile(dbconf.String("douban_cachefile") + md5_name + ".json"),
-}
-var DBtransport = &oauth.Transport{Config: DBConfig}
 
 func (this *Douban) Auth(uid string, code string) (status bool, url string, msg string) {
 	if uid == "" {
@@ -88,14 +78,25 @@ func (this *Douban) Auth(uid string, code string) (status bool, url string, msg 
 		return false, "", "讀取配置文件出錯"
 	}
 
+	this.DBConfig = &oauth.Config{
+		ClientId:     dbconf.String("douban_clientId"),
+		ClientSecret: dbconf.String("douban_clientSecret"),
+		RedirectURL:  dbconf.String("douban_redirectURL"),
+		Scope:        dbconf.String("douban_scope"),
+		AuthURL:      dbconf.String("douban_authURL"),
+		TokenURL:     dbconf.String("douban_tokenURL"),
+		TokenCache:   oauth.CacheFile(dbconf.String("douban_cachefile") + md5_name + ".json"),
+	}
+	this.DBtransport = &oauth.Transport{Config: this.DBConfig}
+
 	// Try to pull the token from the cache; if this fails, we need to get one.
-	token, err := DBConfig.TokenCache.Token()
+	token, err := this.DBConfig.TokenCache.Token()
 	if err != nil {
 
 		if token == nil {
 			if code != "" {
 
-				token, err = DBtransport.Exchange(code)
+				token, err = this.DBtransport.Exchange(code)
 				fmt.Println("token:", token)
 
 				if err != nil {
@@ -104,23 +105,26 @@ func (this *Douban) Auth(uid string, code string) (status bool, url string, msg 
 				}
 
 				// (The Exchange method will automatically cache the token.)
-				fmt.Println("Token is cached in %v\n", DBConfig.TokenCache)
+				fmt.Println("Token is cached in %v\n", this.DBConfig.TokenCache)
 
 				return true, "", "令牌更新成功"
 			}
 			return false, "", ""
 		} else {
-			url := DBConfig.AuthCodeURL("")
+			url := this.DBConfig.AuthCodeURL("")
 			return true, url, "成功"
 		}
 	}
-	DBtransport.Token = token
+	this.DBtransport.Token = token
 
 	return true, "", "令牌加載成功"
 }
 
-func User(uid string) (status bool, user User) {
-	var user douban.User
+func (this *Douban) Userinfo(uid string) (status bool, user User) {
+	status = true
+	if uid != "" && this.User.Uid == uid {
+		return true, this.User
+	}
 
 	if uid == "" {
 		uid = "~me"
@@ -128,10 +132,10 @@ func User(uid string) (status bool, user User) {
 	url := "https://api.douban.com/v2/user/" + uid
 
 	// Make the request.
-	r, err := DBtransport.Client().Get(url)
+	r, err := this.DBtransport.Client().Get(url)
 	if err != nil {
 		fmt.Println("Request Error:", err)
-		return false, user
+		return false, this.User
 	}
 	defer r.Body.Close()
 
@@ -139,11 +143,12 @@ func User(uid string) (status bool, user User) {
 
 	fmt.Println("Request Return:", string(body))
 
-	err = json.Unmarshal(body, &line)
+	err = json.Unmarshal(body, &this.User)
 	if err != nil {
 		fmt.Println("Unmarshal Error:", err)
+		return false, this.User
 	}
-	fmt.Printf("%+v", user)
+	fmt.Printf("%+v", this.User)
 
-	return true, user
+	return true, this.User
 }

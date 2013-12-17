@@ -14,7 +14,7 @@ type User struct {
 	Name     string
 	Email    string
 	Password string
-	Douban   douban.DoubanUser
+	Douban   douban.User
 }
 
 func UserCreate() {
