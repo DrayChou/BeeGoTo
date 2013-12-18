@@ -27,13 +27,13 @@ func (oe TwitterError) Error() string {
 
 type Twitter struct {
 	Conf         string
-	Conffiletype string
+	ConfFileType string
 	OauthClient  *oauth.Client
 }
 
 func (this *Twitter) LoadToken(uid string) (err_r error, token oauth.Credentials) {
 
-	tconf, err := config.NewConfig(this.Conffiletype, this.Conf)
+	tconf, err := config.NewConfig(this.ConfFileType, this.Conf)
 	if err != nil {
 		return TwitterError{"Auth", "twitter 配置文件加载失败"}, token
 	}
@@ -56,7 +56,7 @@ func (this *Twitter) LoadToken(uid string) (err_r error, token oauth.Credentials
 }
 
 func (this *Twitter) SaveToken(uid string, token oauth.Credentials) (err_r error) {
-	tconf, err := config.NewConfig(this.Conffiletype, this.Conf)
+	tconf, err := config.NewConfig(this.ConfFileType, this.Conf)
 	if err != nil {
 		return TwitterError{"Auth", "twitter 配置文件加载失败"}
 	}
@@ -99,11 +99,11 @@ func (this *Twitter) Auth(uid string, code string) error {
 		return TwitterError{"Auth", "配置文件参数错误"}
 	}
 
-	if this.Conffiletype == "" {
-		this.Conffiletype = "ini"
+	if this.ConfFileType == "" {
+		this.ConfFileType = "ini"
 	}
 
-	tconf, err := config.NewConfig(this.Conffiletype, this.Conf)
+	tconf, err := config.NewConfig(this.ConfFileType, this.Conf)
 	if err != nil {
 		return TwitterError{"Auth", "配置文件加载失败"}
 	}
@@ -165,35 +165,34 @@ func (this *Twitter) Auth(uid string, code string) error {
 //	return this.Transport.Refresh()
 //}
 
-//func (this *Twitter) User(uid string) (error, User) {
+func (this *Twitter) User(uid string) error {
 
-//	u := User{}
-//	if uid == "" {
-//		if this.Transport.Token == nil {
-//			return TwitterError{"User", "未授权，请先授权"}, u
-//		}
-//		uid = "~me"
-//	}
-//	request_url := "https://api.douban.com/v2/user/" + uid
+	request_url := "https://api.douban.com/v2/user/" + uid
+	if uid == "" {
+		if this.Transport.Token == nil {
+			return TwitterError{"User", "未授权，请先授权"}
+		}
+		request_url = "https://api.twitter.com/1.1/account/verify_credentials.json"
+	}
 
-//	r, err := this.Transport.Client().Get(request_url)
-//	if err != nil {
-//		return TwitterError{"User", "请求失败:" + err.Error()}, u
-//	}
-//	defer r.Body.Close()
+	r, err := this.Transport.Client().Get(request_url)
+	if err != nil {
+		return TwitterError{"User", "请求失败:" + err.Error()}
+	}
+	defer r.Body.Close()
 
-//	body, _ := ioutil.ReadAll(r.Body)
+	body, _ := ioutil.ReadAll(r.Body)
 
-//	beego.Debug("TwitterAPI:User:Request StatusCode:", r.StatusCode)
-//	beego.Debug("TwitterAPI:User:Request Body:", string(body))
+	beego.Debug("TwitterAPI:User:Request StatusCode:", r.StatusCode)
+	beego.Debug("TwitterAPI:User:Request Body:", string(body))
 
-//	err = json.Unmarshal(body, &u)
-//	if err != nil {
-//		return TwitterError{"User", "JSON解析失败:" + err.Error()}, u
-//	}
+	err = json.Unmarshal(body, &u)
+	if err != nil {
+		return TwitterError{"User", "JSON解析失败:" + err.Error()}
+	}
 
-//	return nil, u
-//}
+	return nil
+}
 
 func (this *Twitter) UserTimeLine(uid string, count int64, since_id int64) error {
 	_, token := this.LoadToken(uid)
@@ -202,7 +201,6 @@ func (this *Twitter) UserTimeLine(uid string, count int64, since_id int64) error
 	r, err := this.OauthClient.Get(http.DefaultClient, &token,
 		"http://api.twitter.com/1.1/statuses/home_timeline.json", nil)
 	if err != nil {
-		log.Fatal(err)
 		return TwitterError{"Auth", "RequestTemporaryCredentials:" + err.Error()}
 	}
 	defer r.Body.Close()
