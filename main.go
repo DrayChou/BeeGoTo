@@ -12,5 +12,6 @@ func main() {
 	beego.Router("/test/", &controllers.TestController{})
 	beego.Router("/oauth/google", &controllers.OauthGoogleController{})
 	beego.Router("/oauth/douban", &controllers.OauthDoubanController{})
+	beego.Router("/oauth/twitter", &controllers.OauthTwitterController{})
 	beego.Run()
 }
