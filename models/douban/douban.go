@@ -105,10 +105,10 @@ func (this *Douban) Auth(uid string, code string) error {
 	Config := &oauth.Config{
 		ClientId:     dbconf.String("clientId"),
 		ClientSecret: dbconf.String("clientSecret"),
-		RedirectURL:  dbconf.String("redirectURL"),
+		RedirectURL:  dbconf.String("callbackURL"),
 		Scope:        dbconf.String("scope"),
-		AuthURL:      dbconf.String("authURL"),
-		TokenURL:     dbconf.String("tokenURL"),
+		AuthURL:      "https://www.douban.com/service/auth2/auth",
+		TokenURL:     "https://www.douban.com/service/auth2/token",
 		TokenCache:   oauth.CacheFile(dbconf.String("cacheDir") + uid + ".json"),
 	}
 	beego.Debug("DoubanAPI:Auth:Config:", Config)
