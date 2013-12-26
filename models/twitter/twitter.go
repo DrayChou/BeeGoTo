@@ -150,7 +150,7 @@ func (this *Twitter) Auth(uid string, oauth_token string, oauth_verifier string)
 	err, client := this.LoadToken(uid)
 	beego.Debug("TwitterAPI:Auth:client:", client)
 
-	if err == nil {
+	if err != nil {
 		httpClient := new(http.Client)
 		if err = this.UserConfig.GetAccessToken(oauth_token, oauth_verifier, this.Service, httpClient); err != nil {
 			beego.Debug("TwitterAPI:Auth:client:", err.Error())
