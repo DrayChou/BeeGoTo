@@ -12,7 +12,7 @@ type MainController struct {
 
 func (this *MainController) Get() {
 
-	models.MgoTest()
+	//models.MgoTest()
 
 	this.SetSession("test", "test")
 	v := this.GetSession("asta")
