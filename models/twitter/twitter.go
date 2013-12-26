@@ -41,6 +41,7 @@ func (this *Twitter) LoadToken(uid string) (err_r error, client *twittergo.Clien
 	if err != nil {
 		return TwitterError{"Auth", "twitter 配置文件加载失败"}, client
 	}
+	beego.Debug("TwitterAPI:LoadToken:tconf:", tconf)
 
 	this.Service.ClientConfig = &oauth1a.ClientConfig{
 		ConsumerKey:    tconf.String("clientId"),
@@ -52,6 +53,7 @@ func (this *Twitter) LoadToken(uid string) (err_r error, client *twittergo.Clien
 	if err != nil {
 		return TwitterError{"Auth", "user 配置文件加载失败"}, client
 	}
+	beego.Debug("TwitterAPI:LoadToken:tokenconf:", tokenconf)
 
 	if tokenconf.String("Token") == "" || tokenconf.String("Secret") == "" {
 		return TwitterError{"Auth", "user 配置文件有误"}, client
@@ -66,6 +68,8 @@ func (this *Twitter) LoadToken(uid string) (err_r error, client *twittergo.Clien
 		Verifier:           tokenconf.String("Verifier"),
 		AccessValues:       params,
 	}
+	beego.Debug("TwitterAPI:LoadToken:params:", params)
+	beego.Debug("TwitterAPI:LoadToken:this.UserConfig:", this.UserConfig)
 
 	if this.UserConfig.AccessTokenSecret == "" || this.UserConfig.AccessTokenKey == "" {
 		return TwitterError{"Auth", "请先取得推特授权"}, client
@@ -73,6 +77,8 @@ func (this *Twitter) LoadToken(uid string) (err_r error, client *twittergo.Clien
 
 	user := oauth1a.NewAuthorizedConfig(this.UserConfig.AccessTokenKey, this.UserConfig.AccessTokenSecret)
 	client = twittergo.NewClient(this.Service.ClientConfig, user)
+	beego.Debug("TwitterAPI:LoadToken:user:", user)
+	beego.Debug("TwitterAPI:LoadToken:client:", client)
 
 	return nil, client
 }
@@ -82,11 +88,14 @@ func (this *Twitter) SaveToken(uid string, UserConfig *oauth1a.UserConfig) (err_
 	if err != nil {
 		return TwitterError{"Auth", "twitter 配置文件加载失败"}
 	}
+	beego.Debug("TwitterAPI:SaveToken:tconf:", tconf)
 
 	b, err := json.Marshal(UserConfig)
 	if err != nil {
 		return TwitterError{"Auth", "token 编码失败"}
 	}
+	beego.Debug("TwitterAPI:SaveToken:b:", b)
+
 	ioutil.WriteFile(tconf.String("cacheDir")+uid+".json", b, 0644)
 
 	return nil
