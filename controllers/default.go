@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"BeeGoTo/models"
+	//"BeeGoTo/models"
 	"fmt"
 	"github.com/astaxie/beego"
 )
