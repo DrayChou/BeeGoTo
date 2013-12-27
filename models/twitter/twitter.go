@@ -151,6 +151,9 @@ func (this *Twitter) Auth(uid string, oauth_token string, oauth_verifier string)
 	beego.Debug("TwitterAPI:Auth:client:", client)
 
 	if err != nil {
+		beego.Debug("TwitterAPI:Auth:oauth_token:", oauth_token)
+		beego.Debug("TwitterAPI:Auth:oauth_verifier:", oauth_verifier)
+
 		httpClient := new(http.Client)
 		if err = this.UserConfig.GetAccessToken(oauth_token, oauth_verifier, this.Service, httpClient); err != nil {
 			beego.Debug("TwitterAPI:Auth:client:", err.Error())
